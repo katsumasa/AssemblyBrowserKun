@@ -196,7 +196,7 @@ namespace UTJ
         string keyword = "";
 
 
-        [MenuItem("WindowX/AssemblyBrotherKun")]
+        [MenuItem("Window/AssemblyBrotherKun")]
         public static void ShowExample()
         {
             AssemblyBrotherKun wnd = GetWindow<AssemblyBrotherKun>();
