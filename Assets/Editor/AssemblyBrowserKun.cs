@@ -7,6 +7,7 @@ namespace UTJ
     using System;
     using System.Collections.Generic;
     using System.Reflection;
+    using System.IO;
 
     // BindingFlagÇ…ä÷Ç∑ÇÈéQçl
     // https://docs.microsoft.com/ja-jp/dotnet/api/system.reflection.bindingflags?view=netframework-4.8
@@ -235,6 +236,25 @@ namespace UTJ
                 assemblyData.text = assemblyNames[i].Name;
                 assemblyListViewItems.Add(assemblyData);
             }
+
+            
+
+            var UnityEnginedPath = Path.Combine(Path.GetDirectoryName(EditorApplication.applicationPath), @"Data/Managed/UnityEngine");
+            var files = Directory.GetFiles(UnityEnginedPath, "*.dll", SearchOption.AllDirectories);
+            foreach(var file in files)
+            {
+                assembly = Assembly.LoadFile(file);
+                assemblyNames = assembly.GetReferencedAssemblies();
+                for (var i = 0; i < assemblyNames.Length; i++)
+                {                    
+
+                    var assemblyData = new AssemblyListViewItem(assemblyNames[i]);
+                    assemblyData.text = assemblyNames[i].Name;
+                    assemblyListViewItems.Add(assemblyData);
+                }
+            }
+
+
 
             var toolBarSearchField = root.Query<ToolbarSearchField>("ToolBarSearchField").AtIndex(0);
             toolBarSearchField.RegisterValueChangedCallback(OnSearchTextChanged);
@@ -553,11 +573,11 @@ namespace UTJ
             label.text += "Reflection Sample\n";
             if (ty.IsPublic)
             {
-                label.text += "var t = Typeof(" + ty.FullName + ");";
+                label.text += "var type = Typeof(" + ty.FullName + ");";
             }
             else
             {
-                label.text += "var t = System.Reflection.Assembly.Load(\"" + ty.Module.Name + "\").GetType(\"" + ty.FullName + "\");";
+                label.text += "var type = System.Reflection.Assembly.Load(\"" + ty.Module.Name + "\").GetType(\"" + ty.FullName + "\");";
             }
         }
 
@@ -688,7 +708,20 @@ namespace UTJ
 
             label.text += "\n";
             label.text += "Reflection Sample\n";
-            label.text += "var methods = type.GetMethods (\n";
+            label.text += "=================\n";
+
+            //label.text += "var methods = type.GetMethods (\n";
+
+            if (!mi.IsStatic)
+            {
+                label.text += "System.Object obj = ScriptableObject.CreateInstance(type);\n";
+            } else
+            {
+                label.text += "\n";
+            }
+
+
+            label.text += "MethodInfo methodInfo = type.GetMethod(" + "\"" + mi.Name + "\",\n";
             label.text += "                                 BindingFlags.FlattenHierarchy\n";
             label.text += "                               | BindingFlags.Instance\n";
 
@@ -705,6 +738,38 @@ namespace UTJ
                 label.text += "                               | BindingFlags.NonPublic\n";
             }
             label.text += ");\n";
+
+            if (parameterInfos.Length != 0)
+            {
+                label.text += "var parameters = new object[]{\n";
+                for (var i = 0; i < parameterInfos.Length; i++)
+                {
+                    var parameterInfo = parameterInfos[i];
+                    label.text += parameterInfo.Name;
+                    if (i < parameterInfos.Length - 1)
+                    {
+                        label.text += ",";
+                    }
+                }
+                label.text += "};\n";
+            }
+
+            label.text += "methodInfo.Invoke(";
+            if (mi.IsStatic)
+            {
+                label.text += "null,";
+            }
+            else
+            {
+                label.text += "obj,";
+            }
+            if (parameterInfos.Length == 0)
+            {
+                label.text += "null);";
+            } else
+            {
+                label.text += "params);";
+            }                        
 
         }
 
@@ -803,7 +868,7 @@ namespace UTJ
             }
             label.text += fi.FieldType + " " + fi.Name + ";\n";
             label.text += "\n";
-            label.text += "var field = type.GetField(\"\n";
+            label.text += "var field = type.GetField(\"" + fi.Name + ",";
             label.text += "                                 BindingFlags.FlattenHierarchy\n";
             label.text += "                               | BindingFlags.Instance\n";
             if (fi.IsStatic)
@@ -819,6 +884,17 @@ namespace UTJ
                 label.text += "                               | BindingFlags.NonPublic\n";
             }
             label.text += ");\n";
+
+            label.text += "System.object obj = field.GetValue(";
+            if (fi.IsStatic)
+            {
+                label.text += "null);\n";
+
+            } 
+            else
+            {
+                label.text += "type);\n";
+            }
         }
     }
 }
